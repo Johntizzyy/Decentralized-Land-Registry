@@ -6,8 +6,23 @@ const db = require("./db");
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Allow frontend origin: localhost in dev, or set CORS_ORIGIN in production (e.g. your Vercel URL).
-const corsOrigin = process.env.CORS_ORIGIN || ["http://localhost:5173", "http://127.0.0.1:5173"];
+// Allow frontend origin: localhost in dev, or set CORS_ORIGIN in production (comma-separated for multiple).
+// Also allow any *.vercel.app origin so preview deployments work.
+const corsOriginList = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
+  : [];
+const allowedOrigins = corsOriginList.length
+  ? ["http://localhost:5173", "http://127.0.0.1:5173", ...corsOriginList]
+  : ["http://localhost:5173", "http://127.0.0.1:5173"];
+function corsOrigin(origin, callback) {
+  if (!origin) return callback(null, true);
+  const allowed = allowedOrigins.some((o) => o.replace(/\/+$/, "") === origin.replace(/\/+$/, ""));
+  let vercelPreview = false;
+  try {
+    vercelPreview = origin ? new URL(origin).hostname.endsWith(".vercel.app") : false;
+  } catch (_) {}
+  return callback(null, allowed || vercelPreview);
+}
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 
