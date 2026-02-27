@@ -1,5 +1,7 @@
-// In development, Vite proxies /api to the backend. In production (e.g. Vercel), use env var.
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+// In development, Vite proxies /api to the backend. In production, set VITE_API_URL to your backend URL.
+// Backend routes are under /api (e.g. /api/parcels). We ensure API_BASE always ends with /api.
+const raw = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const API_BASE = raw ? (raw.endsWith('/api') ? raw : raw + '/api') : '/api';
 
 export async function createParcel(data) {
   const res = await fetch(`${API_BASE}/parcels`, {
