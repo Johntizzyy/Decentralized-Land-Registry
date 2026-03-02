@@ -71,11 +71,56 @@ export default function ReviewParcel() {
           </div>
           <div className="p-6 border-b">
             <h2 className="font-semibold text-gray-800 mb-2">Geospatial coordinates</h2>
-            <p className="font-mono">Lat: {parcel.latitude}, Long: {parcel.longitude}</p>
+            {Array.isArray(parcel.points) && parcel.points.length > 0 ? (
+              <div className="space-y-1 text-sm font-mono">
+                {parcel.points.map((pt, idx) => (
+                  <div key={idx}>
+                    Point {idx + 1}: Easting {pt.easting}, Northing {pt.northing}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="font-mono text-sm text-gray-600">
+                Lat: {parcel.latitude}, Long: {parcel.longitude}
+              </p>
+            )}
           </div>
           <div className="p-6 border-b">
             <h2 className="font-semibold text-gray-800 mb-2">Surveyor info</h2>
             <p>{parcel.surveyorName || '—'} · {parcel.surveyorLicense || '—'}</p>
+          </div>
+          <div className="p-6 border-b">
+            <h2 className="font-semibold text-gray-800 mb-2">Supporting documents (prototype)</h2>
+            <dl className="grid gap-2 md:grid-cols-2 text-sm">
+              <div>
+                <dt className="text-gray-500">Survey Plan</dt>
+                <dd className="text-gray-800">
+                  {parcel.hasSurveyPlan
+                    ? `Yes${parcel.surveyPlanNumber ? ` — No./Ref: ${parcel.surveyPlanNumber}` : ''}`
+                    : 'No / not provided'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">Deed of Assignment / Conveyance</dt>
+                <dd className="text-gray-800">
+                  {parcel.hasDeedOfAssignment
+                    ? `Yes${parcel.deedOfAssignmentDate ? ` — Dated: ${new Date(parcel.deedOfAssignmentDate).toLocaleDateString()}` : ''}`
+                    : 'No / not provided'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">Tax Clearance</dt>
+                <dd className="text-gray-800">
+                  {parcel.hasTaxClearance
+                    ? `Yes${parcel.taxClearanceYear ? ` — Year: ${parcel.taxClearanceYear}` : ''}`
+                    : 'No / not provided'}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-3 text-xs text-gray-500">
+              Prototype-only fieldset to mirror Nigerian land registration documentation. This does not issue a legal title and does not
+              connect to any state land registry.
+            </p>
           </div>
           {isVerified && (
             <div className="p-6 bg-green-50">

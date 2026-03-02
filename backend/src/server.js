@@ -46,21 +46,36 @@ app.post("/api/parcels", (req, res) => {
     nin,
     phone,
     landDescription,
-    latitude,
-    longitude,
     surveyorName,
     surveyorLicense,
+    // Minna / UTM-style polygon points (Easting / Northing)
+    points,
+    // Prototype-level real-world metadata (not full legal process)
+    hasSurveyPlan,
+    surveyPlanNumber,
+    hasDeedOfAssignment,
+    deedOfAssignmentDate,
+    hasTaxClearance,
+    taxClearanceYear,
   } = req.body;
 
-  if (
-    !ownerName ||
-    !nin ||
-    !phone ||
-    !landDescription ||
-    latitude === undefined ||
-    longitude === undefined
-  ) {
-    return res.status(400).json({ message: "Missing required fields" });
+  const hasValidPoints =
+    Array.isArray(points) &&
+    points.length >= 4 &&
+    points.every(
+      (p) =>
+        p &&
+        typeof p.easting === "number" &&
+        typeof p.northing === "number" &&
+        Number.isFinite(p.easting) &&
+        Number.isFinite(p.northing)
+    );
+
+  if (!ownerName || !nin || !phone || !landDescription || !hasValidPoints) {
+    return res.status(400).json({
+      message:
+        "Missing required fields (owner, NIN, phone, description, or at least 4 valid coordinate points).",
+    });
   }
 
   const createdAt = new Date().toISOString();
@@ -71,10 +86,16 @@ app.post("/api/parcels", (req, res) => {
     nin,
     phone,
     landDescription,
-    latitude,
-    longitude,
+    points,
     surveyorName,
     surveyorLicense,
+    // Include prototype document metadata in the signature for integrity
+    hasSurveyPlan: !!hasSurveyPlan,
+    surveyPlanNumber: surveyPlanNumber || null,
+    hasDeedOfAssignment: !!hasDeedOfAssignment,
+    deedOfAssignmentDate: deedOfAssignmentDate || null,
+    hasTaxClearance: !!hasTaxClearance,
+    taxClearanceYear: taxClearanceYear || null,
     createdAt,
   });
   const signature = sha256(signaturePayload);
@@ -86,10 +107,15 @@ app.post("/api/parcels", (req, res) => {
       nin,
       phone,
       landDescription,
-      latitude,
-      longitude,
+      points,
       surveyorName: surveyorName || null,
       surveyorLicense: surveyorLicense || null,
+      hasSurveyPlan: !!hasSurveyPlan,
+      surveyPlanNumber: surveyPlanNumber || null,
+      hasDeedOfAssignment: !!hasDeedOfAssignment,
+      deedOfAssignmentDate: deedOfAssignmentDate || null,
+      hasTaxClearance: !!hasTaxClearance,
+      taxClearanceYear: taxClearanceYear || null,
       status: "PENDING",
       signature,
       sha256Hash: null,
@@ -139,8 +165,7 @@ app.post("/api/parcels/:id/approve", (req, res) => {
     landId: row.landId,
     ownerName: row.ownerName,
     nin: row.nin,
-    latitude: row.latitude,
-    longitude: row.longitude,
+    points: row.points,
     createdAt: row.createdAt,
     verifiedAt,
   });
@@ -165,15 +190,32 @@ app.put("/api/parcels/:id", (req, res) => {
     });
   }
 
-  const { ownerName, nin, phone, landDescription, latitude, longitude } = req.body;
+  const {
+    ownerName,
+    nin,
+    phone,
+    landDescription,
+    points,
+    hasSurveyPlan,
+    surveyPlanNumber,
+    hasDeedOfAssignment,
+    deedOfAssignmentDate,
+    hasTaxClearance,
+    taxClearanceYear,
+  } = req.body;
   try {
     const updated = db.updateParcel(id, {
       ownerName,
       nin,
       phone,
       landDescription,
-      latitude,
-      longitude,
+      points,
+      hasSurveyPlan: !!hasSurveyPlan,
+      surveyPlanNumber: surveyPlanNumber || null,
+      hasDeedOfAssignment: !!hasDeedOfAssignment,
+      deedOfAssignmentDate: deedOfAssignmentDate || null,
+      hasTaxClearance: !!hasTaxClearance,
+      taxClearanceYear: taxClearanceYear || null,
     });
     res.json(updated);
   } catch (err) {

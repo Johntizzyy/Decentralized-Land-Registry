@@ -10,10 +10,21 @@ export default function SurveyorDashboard() {
     nin: '',
     phone: '',
     landDescription: '',
-    latitude: '',
-    longitude: '',
+    // Minna / UTM polygon points (Easting / Northing)
+    points: [
+      { easting: '', northing: '' },
+      { easting: '', northing: '' },
+      { easting: '', northing: '' },
+      { easting: '', northing: '' },
+    ],
     surveyorName: 'Licensed Surveyor',
     surveyorLicense: SURVEYOR_LICENSE,
+    hasSurveyPlan: false,
+    surveyPlanNumber: '',
+    hasDeedOfAssignment: false,
+    deedOfAssignmentDate: '',
+    hasTaxClearance: false,
+    taxClearanceYear: '',
   })
   const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(false)
@@ -37,13 +48,44 @@ export default function SurveyorDashboard() {
     setLoading(true)
     setMessage({ type: '', text: '' })
     try {
+      const cleanedPoints = form.points
+        .map((p) => ({
+          easting: parseFloat(p.easting),
+          northing: parseFloat(p.northing),
+        }))
+        .filter(
+          (p) =>
+            Number.isFinite(p.easting) &&
+            Number.isFinite(p.northing)
+        )
+
+      if (cleanedPoints.length < 4) {
+        setLoading(false)
+        setMessage({
+          type: 'error',
+          text: 'Please provide at least 4 valid Minna / UTM points (Easting and Northing).',
+        })
+        return
+      }
+
       await createParcel({
         ...form,
-        latitude: parseFloat(form.latitude),
-        longitude: parseFloat(form.longitude),
+        points: cleanedPoints,
       })
       setMessage({ type: 'success', text: 'Land parcel submitted to Pending queue (cryptographic signature applied).' })
-      setForm({ ...form, ownerName: '', nin: '', phone: '', landDescription: '', latitude: '', longitude: '' })
+      setForm({
+        ...form,
+        ownerName: '',
+        nin: '',
+        phone: '',
+        landDescription: '',
+        points: [
+          { easting: '', northing: '' },
+          { easting: '', northing: '' },
+          { easting: '', northing: '' },
+          { easting: '', northing: '' },
+        ],
+      })
       loadSubmissions()
     } catch (err) {
       setMessage({ type: 'error', text: err.message })
@@ -114,29 +156,143 @@ export default function SurveyorDashboard() {
                 onChange={(e) => setForm({ ...form, landDescription: e.target.value })}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
-              <input
-                type="number"
-                step="any"
-                required
-                placeholder="e.g. 6.5244"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                value={form.latitude}
-                onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-              />
+            <div className="md:col-span-2 border border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+              <h3 className="text-sm font-semibold text-gray-800 mb-2">Supporting documents (prototype)</h3>
+              <p className="text-xs text-gray-600 mb-3">
+                This section mirrors key Nigerian land registration documents for demo purposes only. It does <strong>not</strong> replace
+                official state land registry processes.
+              </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="flex items-center gap-2 text-sm text-gray-700 mb-1">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={form.hasSurveyPlan}
+                      onChange={(e) => setForm({ ...form, hasSurveyPlan: e.target.checked })}
+                    />
+                    <span>Survey Plan available</span>
+                  </label>
+                  {form.hasSurveyPlan && (
+                    <input
+                      type="text"
+                      placeholder="Survey Plan No. / File Ref"
+                      className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={form.surveyPlanNumber}
+                      onChange={(e) => setForm({ ...form, surveyPlanNumber: e.target.value })}
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-sm text-gray-700 mb-1">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={form.hasDeedOfAssignment}
+                      onChange={(e) => setForm({ ...form, hasDeedOfAssignment: e.target.checked })}
+                    />
+                    <span>Deed of Assignment / Conveyance</span>
+                  </label>
+                  {form.hasDeedOfAssignment && (
+                    <input
+                      type="date"
+                      className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={form.deedOfAssignmentDate}
+                      onChange={(e) => setForm({ ...form, deedOfAssignmentDate: e.target.value })}
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-sm text-gray-700 mb-1">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={form.hasTaxClearance}
+                      onChange={(e) => setForm({ ...form, hasTaxClearance: e.target.checked })}
+                    />
+                    <span>Tax Clearance on file</span>
+                  </label>
+                  {form.hasTaxClearance && (
+                    <input
+                      type="number"
+                      min="1900"
+                      max="2100"
+                      placeholder="Tax year (e.g. 2025)"
+                      className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={form.taxClearanceYear}
+                      onChange={(e) => setForm({ ...form, taxClearanceYear: e.target.value })}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
-              <input
-                type="number"
-                step="any"
-                required
-                placeholder="e.g. 3.3792"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                value={form.longitude}
-                onChange={(e) => setForm({ ...form, longitude: e.target.value })}
-              />
+            <div className="md:col-span-2 border border-dashed border-gray-300 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-gray-800 mb-2">Coordinate points (Minna / UTM)</h3>
+              <p className="text-xs text-gray-600 mb-3">
+                Enter at least 4 survey points using Nigerian Minna Datum (UTM) coordinates. Each point is a pair of Easting (X) and
+                Northing (Y). These points form the polygon used by the blockchain logic for area and overlap checks.
+              </p>
+              <div className="space-y-3">
+                {form.points.map((pt, idx) => (
+                  <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                    <div className="text-xs text-gray-500 font-medium md:col-span-1 flex items-center justify-between">
+                      Point {idx + 1}
+                      {form.points.length > 4 && (
+                        <button
+                          type="button"
+                          className="text-[11px] text-red-600 hover:underline ml-2"
+                          onClick={() => {
+                            const next = form.points.filter((_, i) => i !== idx)
+                            setForm({ ...form, points: next })
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <div className="md:col-span-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Easting (X)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        value={pt.easting}
+                        onChange={(e) => {
+                          const next = [...form.points]
+                          next[idx] = { ...next[idx], easting: e.target.value }
+                          setForm({ ...form, points: next })
+                        }}
+                      />
+                    </div>
+                    <div className="md:col-span-1 md:col-start-3">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Northing (Y)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        value={pt.northing}
+                        onChange={(e) => {
+                          const next = [...form.points]
+                          next[idx] = { ...next[idx], northing: e.target.value }
+                          setForm({ ...form, points: next })
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="mt-3 text-xs font-medium text-ng-green hover:underline"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    points: [...form.points, { easting: '', northing: '' }],
+                  })
+                }
+              >
+                + Add another point (irregular plot)
+              </button>
             </div>
             <div className="md:col-span-2">
               <button
